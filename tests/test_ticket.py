@@ -1,6 +1,9 @@
 
-from ticket import Ticket
 from datetime import datetime
+
+import pytest
+
+from help_desk.ticket import Ticket
 
 
 def test_resolved_at_on_creation():
@@ -78,19 +81,15 @@ def test_invalid_priority_does_not_change_ticket():
 
     old_updated_at = ticket.updated_at
 
-    try:
+    with pytest.raises(ValueError):
         ticket.change_priority("URGENT")
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected ValueError for invalid priority")
 
     assert ticket.priority == "LOW"
     assert ticket.updated_at == old_updated_at
 
 
 def test_empty_title_is_rejected():
-    try:
+    with pytest.raises(ValueError):
         Ticket(
             title="",
             description="The computer does not turn on.",
@@ -99,14 +98,10 @@ def test_empty_title_is_rejected():
             priority="HIGH",
             submitted_by="Lucas",
         )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected ValueError for empty title")
 
 
 def test_whitespace_title_is_rejected():
-    try:
+    with pytest.raises(ValueError):
         Ticket(
             title="   ",
             description="The computer does not turn on.",
@@ -115,14 +110,10 @@ def test_whitespace_title_is_rejected():
             priority="HIGH",
             submitted_by="Lucas",
         )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected ValueError for whitespace-only title")
 
 
 def test_whitespace_description_is_rejected():
-    try:
+    with pytest.raises(ValueError):
         Ticket(
             title="Computer won't start",
             description="   ",
@@ -130,12 +121,6 @@ def test_whitespace_description_is_rejected():
             department="IT",
             priority="HIGH",
             submitted_by="Lucas",
-        )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError(
-            "Expected ValueError for whitespace-only description"
         )
 
 
@@ -153,7 +138,7 @@ def test_valid_category():
 
 
 def test_invalid_category_is_rejected():
-    try:
+    with pytest.raises(ValueError):
         Ticket(
             title="Computer won't start",
             description="The computer does not turn on.",
@@ -162,10 +147,6 @@ def test_invalid_category_is_rejected():
             priority="HIGH",
             submitted_by="Lucas",
         )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected ValueError for invalid category")
 
 
 def test_valid_department():
@@ -182,7 +163,7 @@ def test_valid_department():
 
 
 def test_invalid_department_is_rejected():
-    try:
+    with pytest.raises(ValueError):
         Ticket(
             title="Payroll issue",
             description="Cannot access payroll software.",
@@ -191,10 +172,6 @@ def test_invalid_department_is_rejected():
             priority="MEDIUM",
             submitted_by="Lucas",
         )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected ValueError for invalid department")
 
 
 def test_valid_status_transition():
@@ -211,6 +188,7 @@ def test_valid_status_transition():
 
     assert ticket.status == "IN_PROGRESS"
 
+
 def test_invalid_status_transition_is_rejected():
     ticket = Ticket(
         title="Computer won't start",
@@ -221,14 +199,8 @@ def test_invalid_status_transition_is_rejected():
         submitted_by="Lucas",
     )
 
-    try:
+    with pytest.raises(ValueError):
         ticket.change_status("RESOLVED")
-    except ValueError:
-        pass
-    else:
-        raise AssertionError(
-            "Expected ValueError for invalid status transition"
-        )
 
     assert ticket.status == "OPEN"
 
@@ -274,7 +246,7 @@ def test_complete_status_workflow():
 def test_invalid_ticket_does_not_consume_id():
     next_id_before = Ticket.next_id
 
-    try:
+    with pytest.raises(ValueError):
         Ticket(
             title="Computer issue",
             description="Computer won't start.",
@@ -283,10 +255,6 @@ def test_invalid_ticket_does_not_consume_id():
             priority="HIGH",
             submitted_by="Lucas",
         )
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected ValueError for invalid department")
 
     assert Ticket.next_id == next_id_before
 
@@ -303,36 +271,26 @@ def test_invalid_status_transition_does_not_change_updated_at():
 
     old_updated_at = ticket.updated_at
 
-    try:
+    with pytest.raises(ValueError):
         ticket.change_status("RESOLVED")
-    except ValueError:
-        pass
-    else:
-        raise AssertionError(
-            "Expected ValueError for invalid status transition"
-        )
 
     assert ticket.status == "OPEN"
     assert ticket.updated_at == old_updated_at
 
-# Run all tests
-test_resolved_at_on_creation()
-test_resolved_at_before_resolution()
-test_resolved_at_after_resolution()
-test_change_priority()
-test_invalid_priority_does_not_change_ticket()
-test_empty_title_is_rejected()
-test_whitespace_title_is_rejected()
-test_whitespace_description_is_rejected()
-test_valid_category()
-test_invalid_category_is_rejected()
-test_valid_department()
-test_invalid_department_is_rejected()
-test_valid_status_transition()
-test_invalid_status_transition_is_rejected()
-test_updated_at_changes_when_status_changes()
-test_complete_status_workflow()
-test_invalid_ticket_does_not_consume_id()
-test_invalid_status_transition_does_not_change_updated_at()
 
-print("All tests passed!")
+def test_closed_ticket_cannot_change_status():
+    ticket = Ticket(
+        title="Test ticket",
+        description="Testing closed ticket behavior",
+        category="SOFTWARE",
+        department="IT",
+        priority="MEDIUM",
+        submitted_by="Test employee",
+    )
+
+    ticket.change_status("IN_PROGRESS")
+    ticket.change_status("RESOLVED")
+    ticket.change_status("CLOSED")
+
+    with pytest.raises(ValueError):
+        ticket.change_status("OPEN")
